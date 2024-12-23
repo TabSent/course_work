@@ -1,4 +1,3 @@
-// src/ui/DirectoryApp.java
 package ui;
 
 import javafx.application.Application;
@@ -18,6 +17,7 @@ import java.util.stream.Collectors;
 public class DirectoryApp extends Application {
     private final Directory directory = Directory.getInstance();
     private final ListView<String> personListView = new ListView<>();
+    private final CommandInvoker commandInvoker = new CommandInvoker();
 
     public static void main(String[] args) {
         launch(args);
@@ -130,7 +130,8 @@ public class DirectoryApp extends Application {
 
         try {
             Person person = PersonFactory.createPerson(type.toLowerCase(), name, position);
-            directory.addPerson(person);
+            Command addCommand = new AddPersonCommand(directory, person);
+            commandInvoker.invoke(addCommand);
             refreshList();
             showAlert("Успех", "Пользователь успешно добавлен.", Alert.AlertType.INFORMATION);
             nameField.clear();
@@ -202,9 +203,17 @@ public class DirectoryApp extends Application {
         confirmationAlert.setContentText(selectedPerson);
 
         if (confirmationAlert.showAndWait().orElse(ButtonType.CANCEL) == ButtonType.OK) {
-            directory.getPersons().removeIf(person -> person.toString().equals(selectedPerson));
-            refreshList();
-            showAlert("Успех", "Пользователь успешно удалён.", Alert.AlertType.INFORMATION);
+            Person person = directory.getPersons().stream()
+                    .filter(p -> p.toString().equals(selectedPerson))
+                    .findFirst()
+                    .orElse(null);
+
+            if (person != null) {
+                Command deleteCommand = new DeletePersonCommand(directory, person);
+                commandInvoker.invoke(deleteCommand);
+                refreshList();
+                showAlert("Успех", "Пользователь успешно удалён.", Alert.AlertType.INFORMATION);
+            }
         }
     }
 
@@ -232,7 +241,8 @@ public class DirectoryApp extends Application {
         dialog.setContentText("Новое имя:");
 
         dialog.showAndWait().ifPresent(newName -> {
-            person.setName(newName);
+            Command editCommand = new EditPersonCommand(person, newName);
+            commandInvoker.invoke(editCommand);
             refreshList();
             showAlert("Успех", "Пользователь успешно обновлён.", Alert.AlertType.INFORMATION);
         });
